@@ -1,0 +1,26 @@
+{
+  "5021155639": {
+    "state": "chapter_1_shelves",
+    "inventory": [],
+    "achievements": [],
+    "games_played": 1,
+    "hints_used": 0,
+    "choices_log": [
+      {
+        "state": "start",
+        "choice": "Оставить чемодан и продолжить работу",
+        "next_state": "chapter_1_leave"
+      },
+      {
+        "state": "chapter_1_leave",
+        "choice": "Подойти к чемодану",
+        "next_state": "chapter_1_open"
+      },
+      {
+        "state": "chapter_1_open",
+        "choice": "Прочитать первую запись",
+        "next_state": "chapter_1_notebook"
+      }
+    ]
+  }
+}

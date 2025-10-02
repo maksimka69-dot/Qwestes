@@ -1,0 +1,10 @@
+{
+  "total_games": 3,
+  "endings": {
+    "chapter_1_final_door": 2,
+    "betrayed": 1
+  },
+  "items_found": {
+    "magnifying_glass": 3
+  }
+}

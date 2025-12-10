@@ -3,6 +3,7 @@ import json
 import os
 import random
 import sys
+import time
 from typing import Dict, List, Tuple, Optional, Any
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -59,7 +60,7 @@ ACHIEVEMENTS = {
     'survivor': {'name': 'Выживший', 'desc': 'Пережил встречу с Тенью', 'emoji': '💀'}
 }
 
-# 🎮 Расширенный гейм-текст
+# 🎮 Расширенный гейм-текст (все главы)
 GAME_TEXTS: Dict[str, Dict[str, Any]] = {
     'start': {
         'text': """🕯️ *Тайна Забытого Архива*
@@ -174,7 +175,7 @@ GAME_TEXTS: Dict[str, Dict[str, Any]] = {
             {'text': 'Прочитать первую запись', 'next_state': 'chapter_1_notebook'},
             {'text': 'Проверить потайной карман', 'next_state': 'chapter_1_secret_pocket'}
         ],
-        'items': ['notebook']
+        'items': ['notebook']  # предмет добавляется при входе в состояние
     },
 
     'chapter_1_secret_pocket': {
@@ -284,9 +285,6 @@ GAME_TEXTS: Dict[str, Dict[str, Any]] = {
         'achievement': 'survivor'
     },
 
-    # ... (остальные существующие состояния остаются без изменений)
-    # Добавлю только ключевые для экономии места
-
     'chapter_1_leave': {
         'text': """Вы решаете не трогать чемодан... Но что-то *заставляет вас оглянуться*.  
 Чемодан *слегка приоткрыт*. Изнутри доносится... *шёпот?*
@@ -308,12 +306,279 @@ GAME_TEXTS: Dict[str, Dict[str, Any]] = {
         'choices': [],
         'end': True,
         'achievement': 'ash'
+    },
+
+    # =============== НОВЫЙ СЮЖЕТ: Глава 2 ===============
+    'chapter_1_notebook': {
+        'text': """📘 *Первая запись Элиаса Вейна, 12 марта 1923 г.*
+
+> "Сегодня мы нашли вход. За тройной дверью — Комната Времени.  
+> Она показывает не прошлое, а *возможности*. Но за каждое видение — цена.  
+> Марта говорит: 'Не смотри слишком долго'. Но как устоять, когда видишь своё будущее...?"
+
+На последней странице — *пятно крови* и рисунок: три символа: 🔑, 💉, 🔥.
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Искать тройную дверь', 'next_state': 'chapter_2_gate'},
+            {'text': 'Вернуться к карте', 'next_state': 'chapter_1_map'},
+            {'text': 'Позвать на помощь', 'next_state': 'chapter_1_call_for_help'}
+        ],
+        'image': 'notebook.jpg'
+    },
+
+    'chapter_1_call_for_help': {
+        'text': """🗣️ *Вы кричите в пустоту...*
+
+Через минуту появляется *Марта* — уборщица.  
+> "О, вы нашли его. Я знала, что вы особенный."  
+Она протягивает вам *шоколадку*.  
+> "Съешьте. Вам понадобится энергия."
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Взять шоколадку', 'next_state': 'chapter_1_trusting', 'items': ['chocolate'], 'achievement': 'trusting'},
+            {'text': 'Отказаться', 'next_state': 'chapter_1_skeptic', 'achievement': 'skeptic'}
+        ],
+        'image': 'marta.jpg'
+    },
+
+    'chapter_1_trusting': {
+        'text': """🍫 *Сладкий вкус... и странное головокружение.*
+
+Марта улыбается.  
+> "Теперь вы готовы. Идём к тройной двери."
+
+Она ведёт вас вглубь подвала, где стена украшена тремя символами: 🔑, 💉, 🔥.
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Довериться Марте', 'next_state': 'chapter_2_gate'},
+            {'text': 'Потребовать объяснений', 'next_state': 'chapter_1_confront_marta'}
+        ]
+    },
+
+    'chapter_1_skeptic': {
+        'text': """🤨 *Вы отступаете.*
+
+Марта вздыхает.  
+> "Жаль. Значит, вы пойдёте один. Дверь откроется... но не для всех."
+
+Она исчезает в темноте. Перед вами — стена с тремя символами.
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Искать тройную дверь', 'next_state': 'chapter_2_gate'}
+        ]
+    },
+
+    'chapter_1_confront_marta': {
+        'text': """⚔️ *Вы хватаете её за руку.*
+
+> "Кто вы? Что происходит?"
+
+Марта смеётся — её глаза *на миг вспыхивают золотом*.  
+> "Я — Хранительница. Как и вы *будете*, если выберете верно."
+
+Она отступает, указывая на дверь.  
+> "Выбирай: Ключ. Кровь. Огонь. Но помни — цена всегда одинакова."
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Подойти к двери', 'next_state': 'chapter_2_gate'}
+        ]
+    },
+
+    'chapter_1_map': {
+        'text': """🗺️ *Карта подвала*
+
+Символы образуют путь:  
+→ люк → лестница → зеркало → **тройная дверь**.
+
+На обороте — надпись:  
+> "Открой дверь: не ключом, не силой, а *жертвой*."
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Следовать по карте', 'next_state': 'chapter_2_gate'},
+            {'text': 'Вернуться к дневнику', 'next_state': 'chapter_1_notebook'}
+        ],
+        'image': 'map.jpg'
+    },
+
+    'chapter_2_gate': {
+        'text': """🚪 *Тройная дверь*
+
+Перед вами три арки под одной сводчатой дверью.  
+Каждая имеет символ и надпись:
+
+1️⃣ 🔑 *«Путь Разума»* — *найди ключ, спрятанный в подвале*  
+2️⃣ 💉 *«Путь Сердца»* — *проколи палец и дай каплю крови*  
+3️⃣ 🔥 *«Путь Души»* — *сожги что-то дорогое*
+
+На полу — *тень*, которая шевелится.
+
+*Что вы выбираете?*""",
+        'choices': [
+            {'text': 'Путь Разума (ключ)', 'next_state': 'chapter_2_key_path', 'required_item': 'key'},
+            {'text': 'Путь Сердца (кровь)', 'next_state': 'chapter_2_blood_path'},
+            {'text': 'Путь Души (жертва)', 'next_state': 'chapter_2_fire_path'}
+        ],
+        'image': 'triple_gate.jpg'
+    },
+
+    'chapter_2_key_path': {
+        'text': """🗝️ *Вы вставляете ключ...*
+
+Дверь открывается со скрипом. За ней — *Комната Знаний*: полки с книгами, в центре — глобус из света.
+
+> "Добро пожаловать, Хранитель."
+
+*Конец: Хранитель Тайн* 🏆""",
+        'choices': [],
+        'end': True,
+        'achievement': 'keeper'
+    },
+
+    'chapter_2_blood_path': {
+        'text': """💉 *Капля крови падает на символ...*
+
+Символ вспыхивает. Дверь растворяется. Вы входите в *Комнату Времени*.
+
+Перед вами — *зеркало будущего*. Вы видите себя:  
+— как вы уходите с архива…  
+— как вы остаётесь и становитесь директором…  
+— как вы **исчезаете в 1923 году**.
+
+Голос Элиаса:  
+> "Выбери одно. Но знай: остальные пути *умрут*."
+
+*Что вы выбираете?*""",
+        'choices': [
+            {'text': 'Уйти и забыть всё', 'next_state': 'end_leave', 'achievement': 'ash'},
+            {'text': 'Остаться — стать директором', 'next_state': 'end_director'},
+            {'text': 'Войти в 1923 — найти Элиаса', 'next_state': 'chapter_2_time_jump'}
+        ],
+        'image': 'time_mirror.jpg'
+    },
+
+    'chapter_2_fire_path': {
+        'text': """🔥 *Вы достаёте фляжку виски.*
+
+> "Прости, Элиас."
+
+Вы бросаете её в огонь символа. Пламя вспыхивает синим.  
+Дверь *растворяется*, но из неё выходит **Тень** — силуэт в плаще.
+
+> "Ты выбрал жертву. Теперь служи Теням."
+
+*Конец: Преданный Тайной* 🗡️""",
+        'choices': [],
+        'end': True,
+        'achievement': 'betrayed'
+    },
+
+    'chapter_2_time_jump': {
+        'text': """🌀 *Вы шагаете в зеркало...*
+
+Вихрь времени уносит вас. Вы падаете в снег.  
+**12 марта 1923 года.**
+
+Перед вами — молодой Элиас Вейн. Он улыбается.  
+> "Я ждал тебя. Помоги мне не открыть дверь... а *запечатать её навсегда*."
+
+В руке он держит *амулет времени*.
+
+*Что вы делаете?*""",
+        'choices': [
+            {'text': 'Взять амулет и запечатать дверь', 'next_state': 'end_seal', 'items': ['amulet']},
+            {'text': 'Предложить другое решение', 'next_state': 'chapter_2_altar'}
+        ],
+        'image': '1923_snow.jpg'
+    },
+
+    'chapter_2_altar': {
+        'text': """🕯️ *Алтарь Времени*
+
+Элиас ведёт вас к каменному алтарю, на котором лежат три предмета:  
+- 📔 Дневник  
+- 🍫 Шоколадка (если есть)  
+- 🍾 Фляжка (если есть)  
+
+> "Чтобы запечатать дверь, нужно *жертвовать не вещь, а память*.  
+> То, что ты больше всего ценишь в этой истории."
+
+*Что вы жертвуете?*""",
+        'choices': [
+            {'text': 'Дневник Элиаса', 'next_state': 'end_seal', 'required_item': 'notebook'},
+            {'text': 'Шоколадку Марты', 'next_state': 'end_seal_trust', 'required_item': 'chocolate'},
+            {'text': 'Фляжку виски', 'next_state': 'end_seal_courage', 'required_item': 'whiskey'}
+        ]
+    },
+
+    'end_director': {
+        'text': """👔 *Новый директор*
+
+Год спустя вы сидите в кабинете. На стене — фотография *вас и Элиаса*.  
+Вы пишете в дневнике:  
+> "Тайна жива. И я — её хранитель."
+
+Мимо окна проходит Марта и кивает.
+
+*Конец: Новый Хранитель* 🕊️""",
+        'choices': [],
+        'end': True
+    },
+
+    'end_seal': {
+        'text': """🔒 *Запечатывание*
+
+Вы кладёте амулет на алтарь. Свет поглощает дверь.  
+Элиас исчезает, шепча:  
+> "Спасибо. Теперь никто не узнает правду."
+
+Вы просыпаетесь в подвале... в 2025 году.  
+Чемодан *исчез*. Осталась только *старая фотография* — с вами и Элиасом.
+
+*Конец: Хранитель Памяти* ⏳""",
+        'choices': [],
+        'end': True,
+        'achievement': 'keeper'
+    },
+
+    'end_seal_trust': {
+        'text': """❤️ *Жертва доверия*
+
+Вы кладёте шоколадку на алтарь. Она тает в свете.  
+Марта появляется из воздуха:  
+> "Ты выбрал доверие. Даже к той, что обманула."
+
+Она дарит вам *лупу* — теперь вы видите скрытые символы везде.
+
+*Конец: Прозрение* 🔍""",
+        'choices': [],
+        'end': True,
+        'achievement': 'detective'
+    },
+
+    'end_seal_courage': {
+        'text': """🥃 *Жертва храбрости*
+
+Вы разбиваете фляжку о камень. Виски вспыхивает золотым.  
+Элиас смеётся:  
+> "Вот оно — мужество стажёра!"
+
+Вы возвращаетесь... но теперь *слышите шепот времени*.
+
+*Конец: Слышащий Время* 👂""",
+        'choices': [],
+        'end': True
     }
 }
 
 
 # ==============================
-# 🛠️ Функции (без изменений)
+# 🛠️ Функции
 # ==============================
 
 def validate_game_states():
@@ -322,9 +587,10 @@ def validate_game_states():
     for state in GAME_TEXTS.values():
         for choice in state.get('choices', []):
             referenced.add(choice['next_state'])
-        if 'puzzle' in state:
-            referenced.add(state['puzzle'].get('success_state', ''))
-            referenced.add(state['puzzle'].get('fail_state', ''))
+        puzzle = state.get('puzzle')
+        if puzzle:
+            referenced.add(puzzle.get('success_state', ''))
+            referenced.add(puzzle.get('fail_state', ''))
 
     missing = referenced - all_states
     if missing:
@@ -349,11 +615,12 @@ def get_default_user_data() -> Dict[str, Any]:
         'achievements': [],
         'games_played': 0,
         'hints_used': 0,
-        'choices_log': []
+        'choices_log': [],
+        '_prev_state': None  # для отслеживания входа в новое состояние
     }
 
 
-def save_user_data(user_id: int, data: Dict[str, Any]):
+def save_user_data(user_id: int,  Dict[str, Any]):
     try:
         all_data = {}
         if os.path.exists(USERS_DATA_FILE):
@@ -372,8 +639,8 @@ def load_stats() -> Dict:
         try:
             with open(STATS_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Ошибка загрузки статистики: {e}")
     return {'total_games': 0, 'endings': {}, 'items_found': {}}
 
 
@@ -393,20 +660,25 @@ def get_game_text(state: str) -> Dict[str, Any]:
     })
 
 
-def add_item_to_inventory(user_data: Dict[str, Any], item: str):
-    if item not in user_data['inventory']:
+def add_item_to_inventory(user_ Dict[str, Any], item: str):
+    """Добавляет предмет, если его ещё нет. Обновляет статистику."""
+    if item and item not in user_data['inventory']:
         user_data['inventory'].append(item)
         stats = load_stats()
         stats['items_found'][item] = stats['items_found'].get(item, 0) + 1
         save_stats(stats)
 
 
-def unlock_achievement(user_data: Dict[str, Any], achievement_key: str):
-    if achievement_key not in user_data['achievements']:
-        user_data['achievements'].append(achievement_key)
-        ach = ACHIEVEMENTS[achievement_key]
-        logger.info(f"Achievement unlocked: {ach['name']}")
-        return f"🎉 Достижение получено: {ach['emoji']} {ach['name']} — {ach['desc']}"
+def unlock_achievement(user_ Dict[str, Any], achievement_key: str) -> Optional[str]:
+    """Разблокирует достижение. Возвращает сообщение или None."""
+    if achievement_key and achievement_key not in user_data['achievements']:
+        if achievement_key in ACHIEVEMENTS:
+            user_data['achievements'].append(achievement_key)
+            ach = ACHIEVEMENTS[achievement_key]
+            logger.info(f"Achievement unlocked for {user_data.get('user_id', '?')}: {ach['name']}")
+            return f"🎉 Достижение получено: {ach['emoji']} {ach['name']} — {ach['desc']}"
+        else:
+            logger.warning(f"Unknown achievement: {achievement_key}")
     return None
 
 
@@ -432,24 +704,29 @@ def process_game_step(
         choice_index: Optional[int] = None,
         command: Optional[str] = None,
         user_input: Optional[str] = None
-) -> Tuple[str, List[Dict[str, Any]], bool, Optional[str], Optional[str]]:
+) -> Tuple[str, List[Dict[str, Any]], bool, Optional[str], List[str]]:
+    """
+    Возвращает: (текст, выборы, is_end, путь_к_изображению, [сообщения_о_достижениях])
+    """
     user_data = load_user_data(user_id)
+    achievement_messages = []
 
-    # Команды
+    # === Команды ===
     if command == '/inventory':
-        return get_inventory_text(user_data['inventory']), [], False, None, None
+        return get_inventory_text(user_data['inventory']), [], False, None, []
     if command == '/achievements':
-        return get_achievements_text(user_data['achievements']), [], False, None, None
+        return get_achievements_text(user_data['achievements']), [], False, None, []
     if command == '/stats':
         stats = load_stats()
         endings = "\n".join([f"{k}: {v}" for k, v in stats.get('endings', {}).items()])
-        return f"📊 Статистика\nВсего игр: {stats.get('total_games', 0)}\n\nКонцовки:\n{endings or 'Нет данных'}", [], False, None, None
+        text = f"📊 Статистика\nВсего игр: {stats.get('total_games', 0)}\n\nКонцовки:\n{endings or 'Нет данных'}"
+        return text, [], False, None, []
     if command == '/hint':
         if user_data.get('hints_used', 0) >= 3:
-            return "У вас закончились подсказки (макс. 3) 🧠", [], False, None, None
+            return "У вас закончились подсказки (макс. 3) 🧠", [], False, None, []
         user_data['hints_used'] += 1
         save_user_data(user_id, user_data)
-        return "Подсказка: исследуйте все углы подвала. Фонарик и фото могут помочь.", [], False, None, None
+        return "Подсказка: исследуйте все углы подвала. Фонарик и фото могут помочь.", [], False, None, []
     if command == '/restart':
         user_data = get_default_user_data()
         user_data['games_played'] += 1
@@ -458,70 +735,105 @@ def process_game_step(
         text = state_data['text']
         choices = state_data.get('choices', [])
         image = get_image_path(state_data.get('image'))
-        return text, choices, False, image, None
+        return text, choices, False, image, []
 
     current_state = user_data['state']
     state_data = get_game_text(current_state)
 
-    # Головоломка
-    if 'puzzle' in state_data and user_input:
+    # === Головоломка ===
+    if 'puzzle' in state_
+        and user_input:
         puzzle = state_data['puzzle']
         next_state = puzzle['success_state'] if user_input.strip() == puzzle['answer'] else puzzle['fail_state']
         user_data['state'] = next_state
         save_user_data(user_id, user_data)
         new_data = get_game_text(next_state)
-        return new_data['text'], new_data.get('choices', []), new_data.get('end', False), get_image_path(
-            new_data.get('image')), None
+        text = new_data['text']
+        image = get_image_path(new_data.get('image'))
+        return text, new_data.get('choices', []), new_data.get('end', False), image, []
 
-    # Выбор игрока
+    # === Вход в новое состояние: предметы и достижения из state_data (1 раз) ===
+    prev_state = user_data.get('_prev_state')
+    if current_state != prev_state:
+        # Предметы из состояния
+        if 'items' in state_
+            for item in state_data['items']:
+                add_item_to_inventory(user_data, item)
+
+        # Достижение из состояния
+        if 'achievement' in state_
+            msg = unlock_achievement(user_data, state_data['achievement'])
+            if msg:
+                achievement_messages.append(msg)
+
+        # Авто-достижение "Коллекционер"
+        if len(user_data['inventory']) >= len(INVENTORY_ITEMS):
+            msg = unlock_achievement(user_data, 'collector')
+            if msg:
+                achievement_messages.append(msg)
+
+        user_data['_prev_state'] = current_state
+        save_user_data(user_id, user_data)
+
+    # === Выбор игрока ===
     if choice_index is not None and 0 <= choice_index < len(state_data.get('choices', [])):
         choice = state_data['choices'][choice_index]
         next_state = choice['next_state']
 
-        # Проверка предмета
-        if 'required_item' in choice and choice['required_item'] and choice['required_item'] not in user_data[
-            'inventory']:
-            item_name = INVENTORY_ITEMS.get(choice['required_item'], choice['required_item'])
-            return f"❌ У вас нет {item_name}! Проверьте инвентарь (/inventory).", state_data.get('choices',
-                                                                                                 []), False, None, None
+        # Проверка требуемого предмета
+        required = choice.get('required_item')
+        if required and required not in user_data['inventory']:
+            item_name = INVENTORY_ITEMS.get(required, required)
+            return f"❌ У вас нет {item_name}! Проверьте инвентарь (/inventory).", state_data.get('choices', []), False, None, []
 
-        # Логика
-        user_data['choices_log'].append({'state': current_state, 'choice': choice['text'], 'next_state': next_state})
+        # Лог выбора
+        user_data['choices_log'].append({
+            'state': current_state,
+            'choice': choice['text'],
+            'next_state': next_state,
+            'timestamp': int(time.time())
+        })
+
+        # Достижение из выбора
         if 'achievement' in choice:
-            achievement_msg = unlock_achievement(user_data, choice['achievement'])
+            msg = unlock_achievement(user_data, choice['achievement'])
+            if msg:
+                achievement_messages.append(msg)
+
+        # Предметы из выбора
         if 'items' in choice:
             for item in choice['items']:
                 add_item_to_inventory(user_data, item)
-        if len(user_data['inventory']) >= len(INVENTORY_ITEMS):
-            unlock_achievement(user_data, 'collector')
 
+        # Обновляем состояние
         user_data['state'] = next_state
         save_user_data(user_id, user_data)
 
-        # Статистика при конце
+        # Обработка конца игры
         new_data = get_game_text(next_state)
         if new_data.get('end', False):
             stats = load_stats()
             stats['total_games'] += 1
-            ending_name = next_state.replace('end_', '')
+            ending_name = next_state.replace('end_', '', 1)
             stats['endings'][ending_name] = stats['endings'].get(ending_name, 0) + 1
             save_stats(stats)
 
-        text = new_data['text'].replace('{inventory}',
-                                        ', '.join(INVENTORY_ITEMS.get(i, i) for i in user_data['inventory']) or 'пусто')
-        return text, new_data.get('choices', []), new_data.get('end', False), get_image_path(
-            new_data.get('image')), None
+        # Формируем финальный текст
+        text = new_data['text']
+        if achievement_messages:
+            text = "\n\n".join([text] + achievement_messages)
+        return text, new_data.get('choices', []), new_data.get('end', False), get_image_path(new_data.get('image')), achievement_messages
 
-    # Случайное событие
-    if 'random_event' in state_data and random.random() < state_data['random_event']['chance']:
-        event = state_data['random_event']
-        return event['text'], event['choices'], False, None, None
+    # === Случайное событие ===
+    event = state_data.get('random_event')
+    if event and random.random() < event['chance']:
+        return event['text'], event['choices'], False, None, []
 
-    # Обычный текст
-    text = state_data['text'].replace('{inventory}',
-                                      ', '.join(INVENTORY_ITEMS.get(i, i) for i in user_data['inventory']) or 'пусто')
-    return text, state_data.get('choices', []), state_data.get('end', False), get_image_path(
-        state_data.get('image')), None
+    # === Обычный текст состояния ===
+    text = state_data['text']
+    if achievement_messages:
+        text = "\n\n".join([text] + achievement_messages)
+    return text, state_data.get('choices', []), state_data.get('end', False), get_image_path(state_data.get('image')), achievement_messages
 
 
 def get_image_path(filename: Optional[str]) -> Optional[str]:
@@ -556,7 +868,7 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user or not update.message:
         return
     user_id = update.effective_user.id
-    text, choices, is_end, image, sound = process_game_step(user_id, command='/restart')
+    text, choices, is_end, image, ach_msgs = process_game_step(user_id, command='/restart')
 
     if image and os.path.exists(image):
         try:
@@ -609,43 +921,48 @@ async def restart_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text or not update.effective_user:
+    if not update.message or not update.effective_user:
+        return
+
+    if not update.message.text:
+        await update.message.reply_text("Пожалуйста, выберите вариант из клавиатуры или введите текст.")
         return
 
     user_id = update.effective_user.id
-    text = update.message.text.strip()
+    text_input = update.message.text.strip()
 
-    if text.startswith('/'):
-        return
+    if text_input.startswith('/'):
+        return  # команды обрабатываются отдельно
 
     current_data = load_user_data(user_id)
     current_state = current_data['state']
     state_data = get_game_text(current_state)
 
-    # Головоломка
-    if 'puzzle' in state_data:
-        text, choices, is_end, image, sound = process_game_step(user_id, user_input=text)
+    # === Головоломка ===
+    if 'puzzle' in state_
+        text, choices, is_end, image, ach_msgs = process_game_step(user_id, user_input=text_input)
         if image and os.path.exists(image):
             try:
                 await update.message.reply_photo(photo=open(image, 'rb'))
             except Exception as e:
                 logger.error(f"Ошибка отправки фото: {e}")
-        await update.message.reply_text(text, parse_mode="Markdown" if not is_end else None)
+        full_text = "\n\n".join([text] + ach_msgs) if ach_msgs else text
+        await update.message.reply_text(full_text, parse_mode="Markdown" if not is_end else None)
         if choices:
             keyboard = [[c['text']] for c in choices]
             markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
             await update.message.reply_text("Выберите действие:", reply_markup=markup)
         elif is_end:
-            await update.message.reply_text("Игра окончена. /play чтобы начать заново.",
-                                            reply_markup=ReplyKeyboardRemove())
+            await update.message.reply_text("Игра окончена. /play чтобы начать заново.", reply_markup=ReplyKeyboardRemove())
         return
 
-    # Обычный выбор
+    # === Обычный выбор ===
     _, current_choices, _, _, _ = process_game_step(user_id)
-    choice_index = next((i for i, c in enumerate(current_choices) if c['text'] == text), None)
+    choice_index = next((i for i, c in enumerate(current_choices) if c['text'] == text_input), None)
 
     if choice_index is not None:
-        text, choices, is_end, image, sound = process_game_step(user_id, choice_index=choice_index)
+        text, choices, is_end, image, ach_msgs = process_game_step(user_id, choice_index=choice_index)
+        full_text = "\n\n".join([text] + ach_msgs) if ach_msgs else text
 
         if image and os.path.exists(image):
             try:
@@ -656,14 +973,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if choices and not is_end:
             keyboard = [[c['text']] for c in choices]
             markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True)
-            await update.message.reply_text(text, reply_markup=markup, parse_mode="Markdown")
+            await update.message.reply_text(full_text, reply_markup=markup, parse_mode="Markdown")
         else:
-            await update.message.reply_text(text, reply_markup=ReplyKeyboardRemove(),
-                                            parse_mode="Markdown" if not is_end else None)
+            await update.message.reply_text(full_text, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown" if not is_end else None)
             if is_end:
                 await update.message.reply_text("Игра окончена. Напишите /play, чтобы начать заново.")
     else:
-        pass
+        # Неизвестный ввод — мягко напоминаем
+        await update.message.reply_text("Неизвестная команда. Выберите вариант из клавиатуры.")
 
 
 # ==============================
@@ -674,7 +991,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def webhook():
     try:
         json_data = request.get_json()
-        if not json_data:
+        if not json_
             return 'OK', 200
 
         # Создаем Update объект
@@ -746,6 +1063,7 @@ def run_bot():
 
     except Exception as e:
         logger.error(f"❌ Ошибка при запуске бота: {e}")
+        # Перезапуск невозможен из потока, но логируем
 
 
 # ==============================
